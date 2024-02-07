@@ -1,21 +1,30 @@
-import withMiddleware from "@/utils/middleware/withMiddleware.js";
+import clientProvider from "@/utils/clientProvider";
+import withMiddleware from "@/utils/middleware/withMiddleware";
 
-/**
- * @param {import("next").NextApiRequest} req - The HTTP request object.
- * @param {import("next").NextApiResponse} res - The HTTP response object.
- */
 const handler = async (req, res) => {
-  if (req.method === "GET") {
-    return res
-      .status(200)
-      .send({ text: "This text is coming from `/api/apps route`" });
-  }
+  try {
+    const { client } = await clientProvider.graphqlClient({
+      req,
+      res,
+      isOnline: true, //false for offline session, true for online session
+    });
 
-  if (req.method === "POST") {
-    return res.status(200).send({ text: req.body.content });
-  }
+    const response = await client.query({
+      data: `{
+        product(id: "gid://shopify/Product/9132486394015") {
+          handle
+          title
+          description
+        }
+      }`, //Paste your GraphQL query/mutation here
+    });
 
-  return res.status(400).send({ text: "Bad request" });
+    console.dir(response, { depth: null });
+    return res.status(200).send(response) ;
+  } catch (e) {
+    console.error(e);
+    return res.status(400).send({ error: true });
+  }
 };
 
 export default withMiddleware("verifyRequest")(handler);
